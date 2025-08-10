@@ -82,4 +82,42 @@ def add_new_columns():
     finally:
         conn.close()
 
+
+def update_task_priority(task_id, new_priority):
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    c.execute('UPDATE tasks SET priority = ? WHERE id = ?', (new_priority, task_id))
+    conn.commit()
+    conn.close()
+
+
+def batch_add_tasks(tasks):
+    """
+    批量添加任务
+    tasks: 包含任务信息的列表，每个任务是一个字典，包含title, priority, soft_deadline, hard_deadline字段
+    """
+    conn = sqlite3.connect(DB_NAME)
+    c = conn.cursor()
+    try:
+        # 开始事务
+        conn.execute('BEGIN TRANSACTION')
+        # 准备插入语句
+        insert_sql = '''
+            INSERT INTO tasks (title, priority, soft_deadline, hard_deadline)
+            VALUES (?, ?, ?, ?)
+        '''
+        # 提取任务数据
+        task_data = [(task['title'], task['priority'], task['soft_deadline'], task['hard_deadline']) for task in tasks]
+        # 执行批量插入
+        c.executemany(insert_sql, task_data)
+        # 提交事务
+        conn.commit()
+        return True, f"成功导入 {len(tasks)} 个任务"
+    except Exception as e:
+        # 回滚事务
+        conn.rollback()
+        return False, f"导入失败: {str(e)}"
+    finally:
+        conn.close()
+
     
